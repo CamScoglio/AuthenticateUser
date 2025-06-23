@@ -260,6 +260,23 @@ struct ProfileView: View {
   }
 }
 
+// Custom text field style for modern look (if not already defined elsewhere)
+struct ModernTextFieldStyle: TextFieldStyle {
+  func _body(configuration: TextField<Self._Label>) -> some View {
+    configuration
+      .padding(.horizontal, 16)
+      .padding(.vertical, 12)
+      .background(
+        RoundedRectangle(cornerRadius: 12)
+          .fill(Color.gray.opacity(0.1))
+          .overlay(
+            RoundedRectangle(cornerRadius: 12)
+              .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+          )
+      )
+  }
+}
+
 #Preview {
-        ProfileView()
+    ProfileView()
 }

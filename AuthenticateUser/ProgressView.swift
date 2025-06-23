@@ -4,7 +4,7 @@ import SwiftUI
 //Create a progress view that shows a modern loading circle and a message that says "Personalizing your experience..."
 
 
-struct ProgressView: View {
+struct CustomProgressView: View {
     @State private var isAnimating = false
     @State private var rotationAngle: Double = 0
     @State private var currentTextIndex = 0
@@ -163,6 +163,13 @@ struct ProgressView: View {
     }
 }
 
+// Convenience wrapper to avoid naming conflicts
+struct ProgressView: View {
+    var body: some View {
+        CustomProgressView()
+    }
+}
+
 #Preview {
-    ProgressView()
+    CustomProgressView()
 }
