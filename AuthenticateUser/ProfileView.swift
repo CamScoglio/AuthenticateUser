@@ -22,13 +22,15 @@ struct ProfileView: View {
 
   var body: some View {
     ZStack {
-      // White background
-      Color.white
-        .ignoresSafeArea()
-      
       if showProgressView {
+        // Full screen ProgressView
         ProgressView()
+          .ignoresSafeArea()
       } else {
+        // White background
+        Color.white
+          .ignoresSafeArea()
+        
         VStack(spacing: 0) {
           // Header with FitAI branding
           HStack {
