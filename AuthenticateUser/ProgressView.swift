@@ -7,6 +7,16 @@ import SwiftUI
 struct ProgressView: View {
     @State private var isAnimating = false
     @State private var rotationAngle: Double = 0
+    @State private var currentTextIndex = 0
+    @State private var displayedText = ""
+    @State private var currentCharIndex = 0
+    
+    // Easy to modify texts
+    let texts = [
+        "Personalizing your experience...",
+        "Analyzing your fitness goals...",
+        "Creating your custom plan..."
+    ]
     
     var body: some View {
         ZStack {
@@ -81,39 +91,13 @@ struct ProgressView: View {
                         )
                 }
                 
-                // Loading text with typing animation
-                VStack(spacing: 8) {
-                    Text("Personalizing your experience"
-                        .prefix(typedCharacters1))
-                        .font(.title2)
-                        .fontWeight(.medium)
-                        .foregroundColor(.primary)
-                        .onAppear {
-                            animateText1()
-                        }
-                    
-                    Text("Analyzing your fitness goals"
-                        .prefix(typedCharacters2))
-                        .font(.title2)
-                        .fontWeight(.medium)
-                        .foregroundColor(.primary)
-                        .onAppear {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                                animateText2()
-                            }
-                        }
-                    
-                    Text("Creating your custom plan"
-                        .prefix(typedCharacters3))
-                        .font(.title2)
-                        .fontWeight(.medium)
-                        .foregroundColor(.primary)
-                        .onAppear {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 6) {
-                                animateText3()
-                            }
-                        }
-                }
+                // Typing animation text
+                Text(displayedText)
+                    .font(.title2)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+                    .frame(height: 60)
+                    .animation(.easeInOut(duration: 0.1), value: displayedText)
                 
                 // Animated dots
                 HStack(spacing: 8) {
@@ -143,7 +127,39 @@ struct ProgressView: View {
         .onAppear {
             isAnimating = true
             rotationAngle = 360
+            startTypingAnimation()
         }
+    }
+    
+    // Function to type out text character by character
+    func typeText(_ text: String) {
+        displayedText = ""
+        currentCharIndex = 0
+        
+        Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { timer in
+            if currentCharIndex < text.count {
+                let index = text.index(text.startIndex, offsetBy: currentCharIndex)
+                displayedText += String(text[index])
+                currentCharIndex += 1
+            } else {
+                timer.invalidate()
+                // Wait 2 seconds before starting the next text
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    nextText()
+                }
+            }
+        }
+    }
+    
+    // Function to move to the next text
+    func nextText() {
+        currentTextIndex = (currentTextIndex + 1) % texts.count
+        typeText(texts[currentTextIndex])
+    }
+    
+    // Function to start the typing animation cycle
+    func startTypingAnimation() {
+        typeText(texts[currentTextIndex])
     }
 }
 
