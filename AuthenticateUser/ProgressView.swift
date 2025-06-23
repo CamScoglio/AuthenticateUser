@@ -2,6 +2,8 @@ import Foundation
 import SwiftUI
 
 //Create a progress view that shows a modern loading circle and a message that says "Personalizing your experience..."
+
+
 struct ProgressView: View {
     @State private var isAnimating = false
     @State private var rotationAngle: Double = 0
@@ -81,15 +83,36 @@ struct ProgressView: View {
                 
                 // Loading text with typing animation
                 VStack(spacing: 8) {
-                    Text("Personalizing your experience")
+                    Text("Personalizing your experience"
+                        .prefix(typedCharacters1))
                         .font(.title2)
                         .fontWeight(.medium)
                         .foregroundColor(.primary)
+                        .onAppear {
+                            animateText1()
+                        }
                     
-                    Text("Please wait while we set everything up")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
+                    Text("Analyzing your fitness goals"
+                        .prefix(typedCharacters2))
+                        .font(.title2)
+                        .fontWeight(.medium)
+                        .foregroundColor(.primary)
+                        .onAppear {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                                animateText2()
+                            }
+                        }
+                    
+                    Text("Creating your custom plan"
+                        .prefix(typedCharacters3))
+                        .font(.title2)
+                        .fontWeight(.medium)
+                        .foregroundColor(.primary)
+                        .onAppear {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 6) {
+                                animateText3()
+                            }
+                        }
                 }
                 
                 // Animated dots
