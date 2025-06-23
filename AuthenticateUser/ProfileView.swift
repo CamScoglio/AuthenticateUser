@@ -11,79 +11,154 @@ import Supabase
 import PhotosUI
 import Storage
 
-
 struct ProfileView: View {
   @State var username = ""
   @State var fullName = ""
   @State var website = ""
-
   @State var isLoading = false
-
- @State var imageSelection: PhotosPickerItem?
- @State var avatarImage: AvatarImage?
+  @State var imageSelection: PhotosPickerItem?
+  @State var avatarImage: AvatarImage?
+  @State var showProgressView = false
 
   var body: some View {
-    NavigationStack {
-      Form {
-        Section {
+    ZStack {
+      // White background
+      Color.white
+        .ignoresSafeArea()
+      
+      if showProgressView {
+        ProgressView()
+      } else {
+        VStack(spacing: 0) {
+          // Header with FitAI branding
           HStack {
-            Group {
-              if let avatarImage {
-                avatarImage.image.resizable()
-              } else {
-                Color.clear
+            Text("FitAI")
+              .font(.system(size: 32, weight: .bold, design: .rounded))
+              .foregroundColor(.primary)
+            
+            Spacer()
+            
+            Button("Sign out", role: .destructive) {
+              Task {
+                try? await supabase.auth.signOut()
               }
             }
-            .scaledToFit()
-            .frame(width: 80, height: 80)
-
+            .font(.subheadline)
+            .foregroundColor(.red)
+          }
+          .padding(.horizontal, 24)
+          .padding(.top, 16)
+          .padding(.bottom, 32)
+          
+          // Profile content
+          VStack(spacing: 40) {
+            // Profile image section
+            VStack(spacing: 16) {
+              // Circular profile image with edit button
+              ZStack(alignment: .topTrailing) {
+                Group {
+                  if let avatarImage {
+                    avatarImage.image
+                      .resizable()
+                      .scaledToFill()
+                  } else {
+                    RoundedRectangle(cornerRadius: 60)
+                      .fill(Color.gray.opacity(0.1))
+                      .overlay(
+                        Image(systemName: "person.fill")
+                          .font(.system(size: 40))
+                          .foregroundColor(.gray)
+                      )
+                  }
+                }
+                .frame(width: 120, height: 120)
+                .clipShape(Circle())
+                .overlay(
+                  Circle()
+                    .stroke(Color.gray.opacity(0.2), lineWidth: 2)
+                )
+                
+                // Edit button
+                PhotosPicker(selection: $imageSelection, matching: .images) {
+                  Image(systemName: "pencil.circle.fill")
+                    .font(.system(size: 32))
+                    .foregroundColor(.blue)
+                    .background(Color.white, in: Circle())
+                }
+                .offset(x: 8, y: -8)
+              }
+              
+              Text("Tap to update photo")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            }
+            
+            // Form section
+            VStack(spacing: 24) {
+              // Username field
+              VStack(alignment: .leading, spacing: 8) {
+                Text("Username")
+                  .font(.headline)
+                  .foregroundColor(.primary)
+                
+                TextField("Enter your username", text: $username)
+                  .textFieldStyle(ModernTextFieldStyle())
+                  .textContentType(.username)
+                  .textInputAutocapitalization(.never)
+              }
+              
+              // First Name field
+              VStack(alignment: .leading, spacing: 8) {
+                Text("First Name")
+                  .font(.headline)
+                  .foregroundColor(.primary)
+                
+                TextField("Enter your first name", text: $fullName)
+                  .textFieldStyle(ModernTextFieldStyle())
+                  .textContentType(.name)
+              }
+            }
+            .padding(.horizontal, 24)
+            
             Spacer()
-
-            PhotosPicker(selection: $imageSelection, matching: .images) {
-              Image(systemName: "pencil.circle.fill")
-                .symbolRenderingMode(.multicolor)
-                .font(.system(size: 30))
-                .foregroundColor(.accentColor)
+            
+            // Update Profile button
+            Button(action: updateProfileButtonTapped) {
+              HStack {
+                if isLoading {
+                  ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    .scaleEffect(0.8)
+                } else {
+                  Text("Update Profile")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                }
+              }
+              .frame(maxWidth: .infinity)
+              .frame(height: 56)
+              .background(
+                LinearGradient(
+                  gradient: Gradient(colors: [.blue, .purple]),
+                  startPoint: .leading,
+                  endPoint: .trailing
+                )
+              )
+              .foregroundColor(.white)
+              .cornerRadius(16)
+              .shadow(color: .blue.opacity(0.3), radius: 8, x: 0, y: 4)
             }
-          }
-        }
-
-        Section {
-          TextField("Username", text: $username)
-            .textContentType(.username)
-            .textInputAutocapitalization(.never)
-          TextField("Full name", text: $fullName)
-            .textContentType(.name)
-          TextField("Website", text: $website)
-            .textContentType(.URL)
-            .textInputAutocapitalization(.never)
-        }
-
-        Section {
-          Button("Update profile") {
-            updateProfileButtonTapped()
-          }
-          .bold()
-
-          if isLoading {
-            ProgressView()
+            .disabled(isLoading)
+            .opacity(isLoading ? 0.6 : 1.0)
+            .padding(.horizontal, 24)
+            .padding(.bottom, 32)
           }
         }
       }
-      .navigationTitle("Profile")
-      .toolbar(content: {
-        ToolbarItem {
-          Button("Sign out", role: .destructive) {
-            Task {
-              try? await supabase.auth.signOut()
-            }
-          }
-        }
-      })
-      .onChange(of: imageSelection) { _, newValue in
-        guard let newValue else { return }
-        loadTransferable(from: newValue)
-      }
+    }
+    .onChange(of: imageSelection) { _, newValue in
+      guard let newValue else { return }
+      loadTransferable(from: newValue)
     }
     .task {
       await getInitialProfile()
@@ -120,6 +195,7 @@ struct ProfileView: View {
     Task {
       isLoading = true
       defer { isLoading = false }
+      
       do {
         let imageURL = try await uploadImage()
 
@@ -137,6 +213,10 @@ struct ProfileView: View {
           .update(updatedProfile)
           .eq("id", value: currentUser.id)
           .execute()
+        
+        // Show ProgressView after successful update
+        showProgressView = true
+        
       } catch {
         debugPrint(error)
       }
@@ -173,4 +253,8 @@ struct ProfileView: View {
 
     return filePath
   }
+}
+
+#Preview {
+    ProfileView()
 }
