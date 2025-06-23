@@ -15,40 +15,100 @@ struct AuthView: View {
   @State var result: Result<Void, Error>?
 
   var body: some View {
-    // add text that says "Welcome to FitAI, the AI-powered fitness companion."
-    Text("Welcome to FitAI, the AI-powered fitness companion.")
-      .font(.title)
-      .fontWeight(.bold)
-      .foregroundColor(.accentColor)
-      .multilineTextAlignment(.center)
-      .padding()
-    Form {
-      Section {
-        TextField("Email", text: $email)
-          .textContentType(.emailAddress)
-          .textInputAutocapitalization(.never)
-          .autocorrectionDisabled()
-      }
-
-      Section {
-        Button("Sign in") {
-          signInButtonTapped()
+    ZStack {
+      // White background
+      Color.white
+        .ignoresSafeArea()
+      
+      VStack(spacing: 40) {
+        Spacer()
+        
+        // Modern centered title
+        VStack(spacing: 16) {
+          Text("Welcome to")
+            .font(.title2)
+            .fontWeight(.medium)
+            .foregroundColor(.secondary)
+          
+          Text("FitAI")
+            .font(.system(size: 48, weight: .bold, design: .rounded))
+            .foregroundColor(.primary)
+          
+          Text("The AI-powered fitness companion")
+            .font(.title3)
+            .fontWeight(.medium)
+            .foregroundColor(.secondary)
+            .multilineTextAlignment(.center)
         }
-
-        if isLoading {
-          ProgressView()
-        }
-      }
-
-      if let result {
-        Section {
-          switch result {
-          case .success:
-            Text("Check your inbox.")
-          case .failure(let error):
-            Text(error.localizedDescription).foregroundStyle(.red)
+        .padding(.horizontal, 40)
+        
+        // Email input and sign in section
+        VStack(spacing: 24) {
+          // Email input field
+          VStack(alignment: .leading, spacing: 8) {
+            Text("Email Address")
+              .font(.headline)
+              .foregroundColor(.primary)
+            
+            TextField("Enter your email", text: $email)
+              .textFieldStyle(ModernTextFieldStyle())
+              .textContentType(.emailAddress)
+              .textInputAutocapitalization(.never)
+              .autocorrectionDisabled()
+          }
+          
+          // Modern sign in button
+          Button(action: signInButtonTapped) {
+            HStack {
+              if isLoading {
+                ProgressView()
+                  .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                  .scaleEffect(0.8)
+              } else {
+                Text("Sign In")
+                  .font(.headline)
+                  .fontWeight(.semibold)
+              }
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 56)
+            .background(
+              LinearGradient(
+                gradient: Gradient(colors: [.blue, .purple]),
+                startPoint: .leading,
+                endPoint: .trailing
+              )
+            )
+            .foregroundColor(.white)
+            .cornerRadius(16)
+            .shadow(color: .blue.opacity(0.3), radius: 8, x: 0, y: 4)
+          }
+          .disabled(isLoading || email.isEmpty)
+          .opacity((isLoading || email.isEmpty) ? 0.6 : 1.0)
+          
+          // Result message
+          if let result {
+            HStack {
+              switch result {
+              case .success:
+                Image(systemName: "checkmark.circle.fill")
+                  .foregroundColor(.green)
+                Text("Check your inbox for the sign-in link")
+                  .foregroundColor(.green)
+              case .failure(let error):
+                Image(systemName: "exclamationmark.circle.fill")
+                  .foregroundColor(.red)
+                Text(error.localizedDescription)
+                  .foregroundColor(.red)
+              }
+            }
+            .font(.subheadline)
+            .padding(.horizontal)
           }
         }
+        .padding(.horizontal, 40)
+        
+        Spacer()
       }
     }
     .onOpenURL(perform: { url in
@@ -78,4 +138,25 @@ struct AuthView: View {
       }
     }
   }
+}
+
+// Custom text field style for modern look
+struct ModernTextFieldStyle: TextFieldStyle {
+  func _body(configuration: TextField<Self._Label>) -> some View {
+    configuration
+      .padding(.horizontal, 16)
+      .padding(.vertical, 12)
+      .background(
+        RoundedRectangle(cornerRadius: 12)
+          .fill(Color.gray.opacity(0.1))
+          .overlay(
+            RoundedRectangle(cornerRadius: 12)
+              .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+          )
+      )
+  }
+}
+
+#Preview {
+    AuthView()
 }
