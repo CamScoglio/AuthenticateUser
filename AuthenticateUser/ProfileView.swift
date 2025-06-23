@@ -21,12 +21,12 @@ struct ProfileView: View {
   @State var showProgressView = false
 
   var body: some View {
-    if showProgressView {
+    ZStack {
+      if showProgressView {
         // Full screen ProgressView
         ProgressView()
           .ignoresSafeArea()
-    } else {
-      ZStack {
+      } else {
         // White background
         Color.white
           .ignoresSafeArea()
@@ -162,8 +162,10 @@ struct ProfileView: View {
       guard let newValue else { return }
       loadTransferable(from: newValue)
     }
-    .task {
-      await getInitialProfile()
+    .onAppear {
+      Task {
+        await getInitialProfile()
+      }
     }
   }
 
@@ -225,6 +227,7 @@ struct ProfileView: View {
     }
   }
 
+  @MainActor
   private func loadTransferable(from imageSelection: PhotosPickerItem) {
     Task {
       do {
