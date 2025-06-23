@@ -21,12 +21,12 @@ struct ProfileView: View {
   @State var showProgressView = false
 
   var body: some View {
-    ZStack {
-      if showProgressView {
+    if showProgressView {
         // Full screen ProgressView
         ProgressView()
           .ignoresSafeArea()
-      } else {
+    } else {
+      ZStack {
         // White background
         Color.white
           .ignoresSafeArea()
