@@ -19,142 +19,154 @@ struct ProgressView: View {
     ]
     
     var body: some View {
-        ZStack {
-            // Background gradient
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color.blue.opacity(0.1),
-                    Color.purple.opacity(0.1),
-                    Color.blue.opacity(0.1)
-                ]),
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-            
-            VStack(spacing: 30) {
-                // Modern animated loading circle
+        Group {
+            if showProgressView {
+                // Full screen ProgressView
+                ProgressView()
+                    .ignoresSafeArea()
+            } else {
+                // Profile form view
                 ZStack {
-                    // Outer pulsing circle
-                    Circle()
-                        .stroke(
-                            LinearGradient(
-                                gradient: Gradient(colors: [.blue, .purple, .blue]),
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 3
-                        )
-                        .frame(width: 80, height: 80)
-                        .scaleEffect(isAnimating ? 1.2 : 1.0)
-                        .opacity(isAnimating ? 0.5 : 1.0)
-                        .animation(
-                            Animation.easeInOut(duration: 1.5)
-                                .repeatForever(autoreverses: true),
-                            value: isAnimating
-                        )
+                    // White background
+                    Color.white
+                        .ignoresSafeArea()
                     
-                    // Inner rotating circle
-                    Circle()
-                        .trim(from: 0, to: 0.7)
-                        .stroke(
-                            LinearGradient(
-                                gradient: Gradient(colors: [.purple, .blue]),
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            style: StrokeStyle(lineWidth: 4, lineCap: .round)
-                        )
-                        .frame(width: 60, height: 60)
-                        .rotationEffect(.degrees(rotationAngle))
-                        .animation(
-                            Animation.linear(duration: 1.5)
-                                .repeatForever(autoreverses: false),
-                            value: rotationAngle
-                        )
-                    
-                    // Center dot
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                gradient: Gradient(colors: [.blue, .purple]),
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 12, height: 12)
-                        .scaleEffect(isAnimating ? 1.3 : 1.0)
-                        .animation(
-                            Animation.easeInOut(duration: 0.8)
-                                .repeatForever(autoreverses: true),
-                            value: isAnimating
-                        )
-                }
-                
-                // Typing animation text
-                Text(displayedText)
-                    .font(.title2)
-                    .fontWeight(.medium)
-                    .foregroundColor(.primary)
-                    .frame(height: 60)
-                    .animation(.easeInOut(duration: 0.1), value: displayedText)
-                
-                // Animated dots
-                HStack(spacing: 8) {
-                    ForEach(0..<3) { index in
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    gradient: Gradient(colors: [.blue, .purple]),
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
+                    VStack(spacing: 0) {
+                        // Header with FitAI branding
+                        HStack {
+                            Text("FitAI")
+                                .font(.system(size: 32, weight: .bold, design: .rounded))
+                                .foregroundColor(.primary)
+                            
+                            Spacer()
+                            
+                            Button("Sign out", role: .destructive) {
+                                Task {
+                                    try? await supabase.auth.signOut()
+                                }
+                            }
+                            .font(.subheadline)
+                            .foregroundColor(.red)
+                        }
+                        .padding(.horizontal, 24)
+                        .padding(.top, 16)
+                        .padding(.bottom, 32)
+                        
+                        // Profile content
+                        VStack(spacing: 40) {
+                            // Profile image section
+                            VStack(spacing: 16) {
+                                // Circular profile image with edit button
+                                ZStack(alignment: .topTrailing) {
+                                    Group {
+                                        if let avatarImage {
+                                            avatarImage.image
+                                                .resizable()
+                                                .scaledToFill()
+                                        } else {
+                                            RoundedRectangle(cornerRadius: 60)
+                                                .fill(Color.gray.opacity(0.1))
+                                                .overlay(
+                                                    Image(systemName: "person.fill")
+                                                        .font(.system(size: 40))
+                                                        .foregroundColor(.gray)
+                                                )
+                                        }
+                                    }
+                                    .frame(width: 120, height: 120)
+                                    .clipShape(Circle())
+                                    .overlay(
+                                        Circle()
+                                            .stroke(Color.gray.opacity(0.2), lineWidth: 2)
+                                    )
+                                    
+                                    // Edit button
+                                    PhotosPicker(selection: $imageSelection, matching: .images) {
+                                        Image(systemName: "pencil.circle.fill")
+                                            .font(.system(size: 32))
+                                            .foregroundColor(.blue)
+                                            .background(Color.white, in: Circle())
+                                    }
+                                    .offset(x: 8, y: -8)
+                                }
+                                
+                                Text("Tap to update photo")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            // Form section
+                            VStack(spacing: 24) {
+                                // Username field
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Username")
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
+                                    
+                                    TextField("Enter your username", text: $username)
+                                        .textFieldStyle(ModernTextFieldStyle())
+                                        .textContentType(.username)
+                                        .textInputAutocapitalization(.never)
+                                }
+                                
+                                // First Name field
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("First Name")
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
+                                    
+                                    TextField("Enter your first name", text: $fullName)
+                                        .textFieldStyle(ModernTextFieldStyle())
+                                        .textContentType(.name)
+                                }
+                            }
+                            .padding(.horizontal, 24)
+                            
+                            Spacer()
+                            
+                            // Update Profile button
+                            Button(action: updateProfileButtonTapped) {
+                                HStack {
+                                    if isLoading {
+                                        ProgressView()
+                                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                            .scaleEffect(0.8)
+                                    } else {
+                                        Text("Update Profile")
+                                            .font(.headline)
+                                            .fontWeight(.semibold)
+                                    }
+                                }
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 56)
+                                .background(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [.blue, .purple]),
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
                                 )
-                            )
-                            .frame(width: 8, height: 8)
-                            .scaleEffect(isAnimating ? 1.5 : 1.0)
-                            .opacity(isAnimating ? 0.5 : 1.0)
-                            .animation(
-                                Animation.easeInOut(duration: 0.6)
-                                    .repeatForever(autoreverses: true)
-                                    .delay(Double(index) * 0.2),
-                                value: isAnimating
-                            )
+                                .foregroundColor(.white)
+                                .cornerRadius(16)
+                                .shadow(color: .blue.opacity(0.3), radius: 8, x: 0, y: 4)
+                            }
+                            .disabled(isLoading)
+                            .opacity(isLoading ? 0.6 : 1.0)
+                            .padding(.horizontal, 24)
+                            .padding(.bottom, 32)
+                        }
                     }
                 }
             }
-            .padding(40)
         }
-        .onAppear {
-            isAnimating = true
-            rotationAngle = 360
-            startTypingAnimation()
-        }
-    }
-    
-    // Function to type out text character by character
-    func typeText(_ text: String) {
-        displayedText = ""
-        currentCharIndex = 0
         
-        Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { timer in
-            if currentCharIndex < text.count {
-                let index = text.index(text.startIndex, offsetBy: currentCharIndex)
-                displayedText += String(text[index])
-                currentCharIndex += 1
-            } else {
-                timer.invalidate()
-                // Wait 2 seconds before starting the next text
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                    nextText()
-                }
-            }
+        .onChange(of: imageSelection) { _, newValue in
+            guard let newValue else { return }
+            loadTransferable(from: newValue)
         }
-    }
-    
-    // Function to move to the next text
-    func nextText() {
-        currentTextIndex = (currentTextIndex + 1) % texts.count
-        typeText(texts[currentTextIndex])
+        .task {
+            await getInitialProfile()
+        }
     }
     
     // Function to start the typing animation cycle

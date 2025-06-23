@@ -256,5 +256,5 @@ struct ProfileView: View {
 }
 
 #Preview {
-    ProfileView()
+        ProfileView()
 }
