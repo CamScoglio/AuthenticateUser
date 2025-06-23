@@ -15,6 +15,13 @@ struct AuthView: View {
   @State var result: Result<Void, Error>?
 
   var body: some View {
+    // add text that says "Welcome to FitAI, the AI-powered fitness companion."
+    Text("Welcome to FitAI, the AI-powered fitness companion.")
+      .font(.title)
+      .fontWeight(.bold)
+      .foregroundColor(.accentColor)
+      .multilineTextAlignment(.center)
+      .padding()
     Form {
       Section {
         TextField("Email", text: $email)
