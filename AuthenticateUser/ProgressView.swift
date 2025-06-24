@@ -20,32 +20,20 @@ struct CustomProgressView: View {
     
     var body: some View {
         ZStack {
-            // Background gradient
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color.blue.opacity(0.1),
-                    Color.purple.opacity(0.1),
-                    Color.blue.opacity(0.1)
-                ]),
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
+            // Background gradient using design system
+            FitAIDesign.Gradients.backgroundSubtle
+                .ignoresSafeArea()
             
-            VStack(spacing: 30) {
+            VStack(spacing: FitAIDesign.Spacing.sectionSpacing - 10) {
                 // Modern animated loading circle
                 ZStack {
                     // Outer pulsing circle
                     Circle()
                         .stroke(
-                            LinearGradient(
-                                gradient: Gradient(colors: [.blue, .purple, .blue]),
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
+                            FitAIDesign.Gradients.circleGradient,
                             lineWidth: 3
                         )
-                        .frame(width: 80, height: 80)
+                        .frame(width: FitAIDesign.Sizes.loadingCircleLarge, height: FitAIDesign.Sizes.loadingCircleLarge)
                         .scaleEffect(isAnimating ? 1.2 : 1.0)
                         .opacity(isAnimating ? 0.5 : 1.0)
                         .animation(
@@ -58,14 +46,10 @@ struct CustomProgressView: View {
                     Circle()
                         .trim(from: 0, to: 0.7)
                         .stroke(
-                            LinearGradient(
-                                gradient: Gradient(colors: [.purple, .blue]),
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
+                            FitAIDesign.Gradients.reverseGradient,
                             style: StrokeStyle(lineWidth: 4, lineCap: .round)
                         )
-                        .frame(width: 60, height: 60)
+                        .frame(width: FitAIDesign.Sizes.loadingCircleSmall, height: FitAIDesign.Sizes.loadingCircleSmall)
                         .rotationEffect(.degrees(rotationAngle))
                         .animation(
                             Animation.linear(duration: 1.5)
@@ -75,14 +59,8 @@ struct CustomProgressView: View {
                     
                     // Center dot
                     Circle()
-                        .fill(
-                            LinearGradient(
-                                gradient: Gradient(colors: [.blue, .purple]),
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 12, height: 12)
+                        .fill(FitAIDesign.Gradients.primaryVertical)
+                        .frame(width: FitAIDesign.Sizes.centerDotSize, height: FitAIDesign.Sizes.centerDotSize)
                         .scaleEffect(isAnimating ? 1.3 : 1.0)
                         .animation(
                             Animation.easeInOut(duration: 0.8)
@@ -93,24 +71,18 @@ struct CustomProgressView: View {
                 
                 // Typing animation text
                 Text(displayedText)
-                    .font(.title2)
+                    .font(FitAIDesign.Typography.bodyText)
                     .fontWeight(.medium)
-                    .foregroundColor(.primary)
+                    .foregroundColor(FitAIDesign.Colors.textPrimary)
                     .frame(height: 60)
                     .animation(.easeInOut(duration: 0.1), value: displayedText)
                 
                 // Animated dots
-                HStack(spacing: 8) {
+                HStack(spacing: FitAIDesign.Spacing.small) {
                     ForEach(0..<3) { index in
                         Circle()
-                            .fill(
-                                LinearGradient(
-                                    gradient: Gradient(colors: [.blue, .purple]),
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .frame(width: 8, height: 8)
+                            .fill(FitAIDesign.Gradients.primaryVertical)
+                            .frame(width: FitAIDesign.Sizes.dotSize, height: FitAIDesign.Sizes.dotSize)
                             .scaleEffect(isAnimating ? 1.5 : 1.0)
                             .opacity(isAnimating ? 0.5 : 1.0)
                             .animation(
@@ -122,7 +94,7 @@ struct CustomProgressView: View {
                     }
                 }
             }
-            .padding(40)
+            .padding(FitAIDesign.Spacing.xxLarge)
         }
         .onAppear {
             isAnimating = true
