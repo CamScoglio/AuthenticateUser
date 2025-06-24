@@ -12,13 +12,17 @@ import PhotosUI
 import Storage
 
 struct ProfileView: View {
-  @State var username = ""
-  @State var fullName = ""
-  @State var website = ""
-  @State var isLoading = false
-  @State var imageSelection: PhotosPickerItem?
-  @State var avatarImage: AvatarImage?
-  @State var showProgressView = false
+  // Form data
+  @State private var username = ""
+  @State private var name = ""
+  @State private var profileImageData: Data?
+  @State private var selectedImage: PhotosPickerItem?
+  @State private var avatarImage: AvatarImage?
+  
+  // UI state
+  @State private var isLoading = false
+  @State private var showProgressView = false
+  @State private var errorMessage: String?
 
   var body: some View {
     ZStack {
@@ -51,7 +55,7 @@ struct ProfileView: View {
             // Profile image section
             ProfileImageView(
               avatarImage: avatarImage,
-              imageSelection: $imageSelection
+              imageSelection: $selectedImage
             )
             
             // Form section
@@ -64,14 +68,23 @@ struct ProfileView: View {
                   .textInputAutocapitalization(.never)
               }
               
-              // First Name field
-              FormFieldView(label: "First Name") {
-                TextField("Enter your first name", text: $fullName)
+              // Name field
+              FormFieldView(label: "Full Name") {
+                TextField("Enter your full name", text: $name)
                   .textFieldStyle(ModernTextFieldStyle())
                   .textContentType(.name)
               }
             }
             .padding(.horizontal, FitAIDesign.Spacing.large)
+            
+            // Error message
+            if let errorMessage {
+              StatusMessageView(
+                message: errorMessage,
+                isSuccess: false
+              )
+              .padding(.horizontal, FitAIDesign.Spacing.large)
+            }
             
             Spacer()
             
@@ -79,7 +92,8 @@ struct ProfileView: View {
             PrimaryButton(
               title: "Update Profile",
               isLoading: isLoading,
-              action: updateProfileButtonTapped
+              isDisabled: !isFormValid,
+              action: updateProfile
             )
             .padding(.horizontal, FitAIDesign.Spacing.large)
             .padding(.bottom, FitAIDesign.Spacing.xLarge)
@@ -88,117 +102,100 @@ struct ProfileView: View {
         .fitAIBackground()
       }
     }
-    .onChange(of: imageSelection) { _, newValue in
-      guard let newValue else { return }
-      loadTransferable(from: newValue)
-    }
-    .onAppear {
+    .onChange(of: selectedImage) { _, newValue in
       Task {
-        await getInitialProfile()
+        await loadSelectedImage(newValue)
       }
     }
   }
-
-  func getInitialProfile() async {
+  
+  // MARK: - Computed Properties
+  
+  private var isFormValid: Bool {
+    !username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+    !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+  }
+  
+  // MARK: - Functions
+  
+  @MainActor
+  private func loadSelectedImage(_ item: PhotosPickerItem?) async {
+    guard let item = item else { return }
+    
     do {
-      let currentUser = try await supabase.auth.session.user
-
-      let profile: Profile =
-      try await supabase
-        .from("profiles")
-        .select()
-        .eq("id", value: currentUser.id)
-        .single()
-        .execute()
-        .value
-
-      username = profile.username ?? ""
-      fullName = profile.fullName ?? ""
-      website = profile.website ?? ""
-
-      if let avatarURL = profile.avatarURL, !avatarURL.isEmpty {
-        try await downloadImage(path: avatarURL)
+      if let data = try await item.loadTransferable(type: Data.self) {
+        profileImageData = data
+        avatarImage = AvatarImage(data: data)
       }
-
     } catch {
-      debugPrint(error)
+      errorMessage = "Failed to load image: \(error.localizedDescription)"
     }
   }
-
-  func updateProfileButtonTapped() {
+  
+  private func updateProfile() {
     Task {
-      // Update loading state on main thread
       await MainActor.run {
         isLoading = true
+        errorMessage = nil
       }
       
       do {
-        let imageURL = try await uploadImage()
-
+        // Get current user
         let currentUser = try await supabase.auth.session.user
-
-        let updatedProfile = Profile(
-          username: username,
-          fullName: fullName,
-          website: website,
-          avatarURL: imageURL
-        )
-
+        let userEmail = currentUser.email ?? ""
+        
+        // Upload profile image if one was selected
+        var profileImageUrl: String? = nil
+        if let imageData = profileImageData {
+          profileImageUrl = try await uploadProfileImage(imageData)
+        }
+        
+        // Create user profile data
+        let userProfile: [String: AnyJSON] = [
+          "user_id": AnyJSON.string(currentUser.id.uuidString),
+          "email": AnyJSON.string(userEmail),
+          "username": AnyJSON.string(username.trimmingCharacters(in: .whitespacesAndNewlines)),
+          "name": AnyJSON.string(name.trimmingCharacters(in: .whitespacesAndNewlines)),
+          "profile_picture_url": profileImageUrl != nil ? AnyJSON.string(profileImageUrl!) : AnyJSON.null
+        ]
+        
+        // Save to user_profiles table (upsert to handle updates)
         try await supabase
-          .from("profiles")
-          .update(updatedProfile)
-          .eq("id", value: currentUser.id)
+          .from("user_profiles")
+          .upsert(userProfile)
           .execute()
         
-        // Show ProgressView after successful update - ON MAIN THREAD
+        // Success - show progress view
         await MainActor.run {
           isLoading = false
           showProgressView = true
         }
         
       } catch {
-        debugPrint(error)
-        // Reset loading state on error - ON MAIN THREAD
         await MainActor.run {
           isLoading = false
+          errorMessage = "Failed to save profile: \(error.localizedDescription)"
         }
       }
     }
   }
-
-  @MainActor
-  private func loadTransferable(from imageSelection: PhotosPickerItem) {
-    Task {
-      do {
-        avatarImage = try await imageSelection.loadTransferable(type: AvatarImage.self)
-      } catch {
-        debugPrint(error)
-      }
-    }
-  }
-
-  private func downloadImage(path: String) async throws {
-    let data = try await supabase.storage.from("avatars").download(path: path)
-    avatarImage = AvatarImage(data: data)
-  }
-
-  private func uploadImage() async throws -> String? {
-    guard let data = avatarImage?.data else { return nil }
-
-    let filePath = "\(UUID().uuidString).jpeg"
-
+  
+  private func uploadProfileImage(_ imageData: Data) async throws -> String {
+    // Create unique filename
+    let fileName = "\(UUID().uuidString).jpg"
+    
+    // Upload to Supabase storage
     try await supabase.storage
-      .from("avatars")
+      .from("profile-images")
       .upload(
-        filePath,
-        data: data,
+        fileName,
+        data: imageData,
         options: FileOptions(contentType: "image/jpeg")
       )
-
-    return filePath
+    
+    return fileName
   }
 }
-
 
 #Preview {
     ProfileView()
