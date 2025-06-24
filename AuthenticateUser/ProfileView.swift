@@ -20,83 +20,84 @@ struct ProfileView: View {
   @State var avatarImage: AvatarImage?
   @State var showProgressView = false
 
-  if showProgressView {
-    ProgressView()
-      .ignoresSafeArea()
-  } else { 
   var body: some View {
     ZStack {
-      VStack(spacing: 0) {
-        // Header with FitAI branding
-        HStack {
-          AppTitleView(size: 32)
-          
-          Spacer()
-          
-          Button("Sign out", role: .destructive) {
-            Task {
-              try? await supabase.auth.signOut()
-            }
-          }
-          .font(FitAIDesign.Typography.subheadlineText)
-          .foregroundColor(FitAIDesign.Colors.error)
-        }
-        .padding(.horizontal, FitAIDesign.Spacing.large)
-        .padding(.top, FitAIDesign.Spacing.medium)
-        .padding(.bottom, FitAIDesign.Spacing.xLarge)
-        
-        // Profile content
-        VStack(spacing: FitAIDesign.Spacing.sectionSpacing) {
-          // Profile image section
-          ProfileImageView(
-            avatarImage: avatarImage,
-            imageSelection: $imageSelection
-          )
-          
-          // Form section
-          VStack(spacing: FitAIDesign.Spacing.formSpacing) {
-            // Username field
-            FormFieldView(label: "Username") {
-              TextField("Enter your username", text: $username)
-                .textFieldStyle(ModernTextFieldStyle())
-                .textContentType(.username)
-                .textInputAutocapitalization(.never)
-            }
+      if showProgressView {
+        // Full screen ProgressView
+        ProgressView()
+          .ignoresSafeArea()
+      } else {
+        VStack(spacing: 0) {
+          // Header with FitAI branding
+          HStack {
+            AppTitleView(size: 32)
             
-            // First Name field
-            FormFieldView(label: "First Name") {
-              TextField("Enter your first name", text: $fullName)
-                .textFieldStyle(ModernTextFieldStyle())
-                .textContentType(.name)
+            Spacer()
+            
+            Button("Sign out", role: .destructive) {
+              Task {
+                try? await supabase.auth.signOut()
+              }
             }
+            .font(FitAIDesign.Typography.subheadlineText)
+            .foregroundColor(FitAIDesign.Colors.error)
           }
           .padding(.horizontal, FitAIDesign.Spacing.large)
-          
-          Spacer()
-          
-          // Update Profile button
-          PrimaryButton(
-            title: "Update Profile",
-            isLoading: isLoading,
-            action: updateProfileButtonTapped
-          )
-          .padding(.horizontal, FitAIDesign.Spacing.large)
+          .padding(.top, FitAIDesign.Spacing.medium)
           .padding(.bottom, FitAIDesign.Spacing.xLarge)
+          
+          // Profile content
+          VStack(spacing: FitAIDesign.Spacing.sectionSpacing) {
+            // Profile image section
+            ProfileImageView(
+              avatarImage: avatarImage,
+              imageSelection: $imageSelection
+            )
+            
+            // Form section
+            VStack(spacing: FitAIDesign.Spacing.formSpacing) {
+              // Username field
+              FormFieldView(label: "Username") {
+                TextField("Enter your username", text: $username)
+                  .textFieldStyle(ModernTextFieldStyle())
+                  .textContentType(.username)
+                  .textInputAutocapitalization(.never)
+              }
+              
+              // First Name field
+              FormFieldView(label: "First Name") {
+                TextField("Enter your first name", text: $fullName)
+                  .textFieldStyle(ModernTextFieldStyle())
+                  .textContentType(.name)
+              }
+            }
+            .padding(.horizontal, FitAIDesign.Spacing.large)
+            
+            Spacer()
+            
+            // Update Profile button
+            PrimaryButton(
+              title: "Update Profile",
+              isLoading: isLoading,
+              action: updateProfileButtonTapped
+            )
+            .padding(.horizontal, FitAIDesign.Spacing.large)
+            .padding(.bottom, FitAIDesign.Spacing.xLarge)
+          }
         }
+        .fitAIBackground()
       }
-      .fitAIBackground()
+    }
+    .onChange(of: imageSelection) { _, newValue in
+      guard let newValue else { return }
+      loadTransferable(from: newValue)
+    }
+    .onAppear {
+      Task {
+        await getInitialProfile()
+      }
     }
   }
-  .onChange(of: imageSelection) { _, newValue in
-    guard let newValue else { return }
-    loadTransferable(from: newValue)
-  }
-  .onAppear {
-    Task {
-      await getInitialProfile()
-    }
-  }
-}
 
   func getInitialProfile() async {
     do {
@@ -126,8 +127,10 @@ struct ProfileView: View {
 
   func updateProfileButtonTapped() {
     Task {
-      isLoading = true
-      defer { isLoading = false }
+      // Update loading state on main thread
+      await MainActor.run {
+        isLoading = true
+      }
       
       do {
         let imageURL = try await uploadImage()
@@ -147,11 +150,18 @@ struct ProfileView: View {
           .eq("id", value: currentUser.id)
           .execute()
         
-        // Show ProgressView after successful update
-        showProgressView = true
+        // Show ProgressView after successful update - ON MAIN THREAD
+        await MainActor.run {
+          isLoading = false
+          showProgressView = true
+        }
         
       } catch {
         debugPrint(error)
+        // Reset loading state on error - ON MAIN THREAD
+        await MainActor.run {
+          isLoading = false
+        }
       }
     }
   }
