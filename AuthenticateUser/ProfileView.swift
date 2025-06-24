@@ -142,7 +142,6 @@ struct ProfileView: View {
       do {
         // Get current user
         let currentUser = try await supabase.auth.session.user
-        let userEmail = currentUser.email ?? ""
         
         // Upload profile image if one was selected
         var profileImageUrl: String? = nil
@@ -150,16 +149,28 @@ struct ProfileView: View {
           profileImageUrl = try await uploadProfileImage(imageData)
         }
         
-        // Create user profile data
-        let userProfile: [String: AnyJSON] = [
-          "user_id": AnyJSON.string(currentUser.id.uuidString),
-          "email": AnyJSON.string(userEmail),
+        // Update the user's display name in authentication
+        try await supabase.auth.updateUser(
+          attributes: UserAttributes(
+            data: ["display_name": AnyJSON.string(username.trimmingCharacters(in: .whitespacesAndNewlines))]
+          )
+        )
+        
+        // Create user profile data for your specific table structure
+        var userProfile: [String: AnyJSON] = [
+          "id": AnyJSON.string(currentUser.id.uuidString),
           "username": AnyJSON.string(username.trimmingCharacters(in: .whitespacesAndNewlines)),
-          "name": AnyJSON.string(name.trimmingCharacters(in: .whitespacesAndNewlines)),
-          "profile_picture_url": profileImageUrl != nil ? AnyJSON.string(profileImageUrl!) : AnyJSON.null
+          "name": AnyJSON.string(name.trimmingCharacters(in: .whitespacesAndNewlines))
+          // Note: experience_level, primary_goal, workout_days, equipment_inaccess will be set to null/default
+          // You can collect these in a separate onboarding flow or set defaults here
         ]
         
-        // Save to user_profiles table (upsert to handle updates)
+        // Add profile image URL if uploaded
+        if let profileImageUrl = profileImageUrl {
+          userProfile["profile_picture_url"] = AnyJSON.string(profileImageUrl)
+        }
+        
+        // Save to user_profiles table (upsert to handle both insert and update)
         try await supabase
           .from("user_profiles")
           .upsert(userProfile)
@@ -178,6 +189,22 @@ struct ProfileView: View {
         }
       }
     }
+  }
+  
+  private func uploadProfileImage(_ imageData: Data) async throws -> String {
+    // Create unique filename
+    let fileName = "\(UUID().uuidString).jpg"
+    
+    // Upload to Supabase storage
+    try await supabase.storage
+      .from("profile-images")
+      .upload(
+        fileName,
+        data: imageData,
+        options: FileOptions(contentType: "image/jpeg")
+      )
+    
+    return fileName
   }
   
   private func uploadProfileImage(_ imageData: Data) async throws -> String {
